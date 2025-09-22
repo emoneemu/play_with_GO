@@ -2,7 +2,9 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"math/rand"
+	"net/http"
 	"strconv"
 	"time"
 )
@@ -62,6 +64,18 @@ func main() {
 	}
 	fmt.Printf("\nTotal execution time: %v\n", time.Since(t0))
 
+	//===========================built a server on go===============================================
+
+	fileServer := http.FileServer(http.Dir("static"))
+	http.Handle("/", fileServer)
+	http.Handle("/form", formhandler)
+	http.Handle("/hello", hellohandler)
+
+	fmt.Println("Server starting...")
+	if err := http.ListenAndServe(":8080", nil); err != nil {
+		log.Fatal(err)
+	}
+
 }
 func printMe(printvalue string) {
 	fmt.Println(printvalue)
@@ -86,4 +100,35 @@ func dbCall(i int) {
 	var delay float32 = rand.Float32() * 2000
 	time.Sleep(time.Duration(delay) * time.Millisecond)
 	fmt.Println("The result from database is :", dbData[i])
+}
+func hellohandler(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/hello" {
+		http.Error(w, "404 not found.", http.StatusNotFound)
+		return
+	}
+	if r.Method != "GET" {
+		http.Error(w, "Method not allowed.", http.StatusMethodNotAllowed)
+		return
+	}
+	fmt.Fprintln(w, "Hello!")
+}
+
+func formhandler(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/form" {
+		http.Error(w, "404 not found.", http.StatusNotFound)
+		return
+	}
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed.", http.StatusMethodNotAllowed)
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Form parse error", http.StatusBadRequest)
+		return
+	}
+	fmt.Fprintln(w, "Form parsed successfully")
+	name := r.PostFormValue("name")
+	address := r.PostFormValue("address")
+	fmt.Fprintln(w, "Name: %s\n", name)
+	fmt.Fprintln(w, "Address: %s\n", address)
 }
